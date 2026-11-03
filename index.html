@@ -2,9 +2,9 @@
 <meta charset="utf-8">
 <title>TripMALL 商品海报生成器</title>
 <!-- 导出库放本地，避免 CDN 抽风导致导不出 -->
-<script src="vendor/html2canvas.min.js"></script>
-<script src="vendor/jszip.min.js"></script>
-<script src="vendor/jspdf.umd.min.js"></script>
+<script src="html2canvas.min.js"></script>
+<script src="jszip.min.js"></script>
+<script src="jspdf.umd.min.js"></script>
 <style>
 body{font-family:"Microsoft YaHei",sans-serif;background:#f4f4f4;margin:0}
 .wrap{max-width:1320px;margin:20px auto;display:flex;gap:20px;padding:20px}
@@ -302,14 +302,14 @@ function renderHistory(){ try{ const s=JSON.parse(localStorage.getItem('tme_save
 function applySnap(i){ try{ const s=JSON.parse(localStorage.getItem('tme_saved')||'[]'); const x=s[i]; if(!x) return; edits=JSON.parse(JSON.stringify(x.edits)); saveEdits(); document.getElementById('ids').value=x.ids.join('\n'); idsKey=''; gen(); }catch(e){} }
 function delSnap(i){ try{ const s=JSON.parse(localStorage.getItem('tme_saved')||'[]'); s.splice(i,1); localStorage.setItem('tme_saved', JSON.stringify(s)); renderHistory(); }catch(e){} }
 async function loadData(bust){ const q=bust?('?v='+Date.now()):'?v=4';
-  try{ DATA = await fetch('data/products.json'+q).then(r=>r.json()); }catch(e){ DATA={}; }
-  try{ SPECS = await fetch('data/specs.json'+(bust?('?v='+Date.now()):'?v=1')).then(r=>r.json()); }catch(e){ SPECS={}; }
-  try{ MARKET_CATEGORIES = await fetch('data/market-categories.json'+(bust?('?v='+Date.now()):'?v=1')).then(r=>r.json()); }catch(e){ MARKET_CATEGORIES=null; }
+  try{ DATA = await fetch('products.json'+q).then(r=>r.json()); }catch(e){ DATA={}; }
+  try{ SPECS = await fetch('specs.json'+(bust?('?v='+Date.now()):'?v=1')).then(r=>r.json()); }catch(e){ SPECS={}; }
+  try{ MARKET_CATEGORIES = await fetch('market-categories.json'+(bust?('?v='+Date.now()):'?v=1')).then(r=>r.json()); }catch(e){ MARKET_CATEGORIES=null; }
   const n=Object.keys(DATA).length, m=Object.keys(SPECS).length;
   document.getElementById('hint').innerText = '已加载商品 '+n+' 个'+(m?('，规格库 '+m+' 个'):'（规格库未加载）')+'。每行填一个商品ID。'; gen(); loadMeta(); }
 /* ===== 数据更新：时间 / 报表 / 检查更新（轮询本机 8790 端口） ===== */
 var META=null, updTimer=null;
-async function loadMeta(){ try{ META=await fetch('data/update-meta.json?v='+Date.now()).then(r=>r.json()); }catch(e){ META=null; } renderMeta(); }
+async function loadMeta(){ try{ META=await fetch('update-meta.json?v='+Date.now()).then(r=>r.json()); }catch(e){ META=null; } renderMeta(); }
 function renderMeta(){
   var t=document.getElementById('updTime'); if(!t) return;
   if(META&&META.updatedAtCN){ t.innerHTML='数据更新时间：<b>'+esc(META.updatedAtCN)+'</b>　共 '+META.totalProducts+' 个商品'; }
