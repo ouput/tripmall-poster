@@ -1623,42 +1623,60 @@ function exportName(){
   if(tpl==='list')  return listDef().name;
   return '商品海报';
 }
+function exportErrorText(error){
+  if(error&&typeof error.message==='string'&&error.message) return error.message;
+  if(error===undefined) return '异常值为 undefined（没有 message 属性）';
+  if(error===null) return '异常值为 null';
+  return String(error);
+}
+function reportExportError(kind,stage,error){
+  console.error('[TripMALL '+kind+' 导出失败] '+stage,error);
+  alert((kind==='PNG'?'导出失败':'导出 PDF 失败')+'（'+stage+'）：'+exportErrorText(error));
+}
 async function exportPng(){
   if(!document.getElementById('cardBox').firstElementChild) await gen();
   const box=document.getElementById('cardBox');
   const root=box.firstElementChild;
-  const prev=box.hidden; box.hidden=false; // 显示以获取真实尺寸
+  const prev=box.hidden; box.hidden=false;
+  let stage='准备渲染';
   try{
     await new Promise(r=>setTimeout(r,80));
     const pages = (root && root.classList.contains('lpages')) ? Array.prototype.slice.call(root.querySelectorAll('.lcard')) : [root];
     if(pages.length>1 && typeof JSZip!=='undefined'){
       const zip=new JSZip();
       for(let i=0;i<pages.length;i++){
+        stage='渲染第 '+(i+1)+' / '+pages.length+' 页';
         const c=await html2canvas(pages[i],{scale:2,useCORS:true,allowTaint:false,imageTimeout:30000,backgroundColor:'#fff'});
+        stage='读取第 '+(i+1)+' 页 PNG 数据';
         const blob=await new Promise(res=>c.toBlob(res,'image/png'));
         if(blob) zip.file(exportName()+'_'+sizeTag()+'_第'+(i+1)+'页.png', blob);
       }
+      stage='打包 PNG 文件';
       const z=await zip.generateAsync({type:'blob'});
       const a=document.createElement('a');
       a.href=URL.createObjectURL(z);
       setTimeout(function(){URL.revokeObjectURL(a.href);},8000);
       a.download=exportName()+'_'+sizeTag()+'_共'+pages.length+'页.zip';
+      stage='启动 PNG 下载';
       a.click();
       alert('已打包导出 '+pages.length+' 张 '+(LIST_SIZE==='s34'?'3:4':'A4')+' 图片（每张 '+sizePx()+'）');
       return;
     }
     for(let i=0;i<pages.length;i++){
+      stage='渲染第 '+(i+1)+' / '+pages.length+' 页';
       const c=await html2canvas(pages[i],{scale:2,useCORS:true,allowTaint:false,imageTimeout:30000,backgroundColor:'#fff'});
+      stage='读取第 '+(i+1)+' 页 PNG 数据';
       const blob=await new Promise(res=>c.toBlob(res,'image/png'));
       const a=document.createElement('a');
       if(blob){ a.href=URL.createObjectURL(blob); setTimeout(function(){URL.revokeObjectURL(a.href);},6000); }
       else { a.href=c.toDataURL('image/png'); }
       a.download = pages.length>1 ? (exportName()+'_'+sizeTag()+'_第'+(i+1)+'页.png') : 'product-card.png';
+      stage='启动第 '+(i+1)+' 页 PNG 下载';
       a.click();
       if(pages.length>1) await new Promise(r=>setTimeout(r,900));
     }
     if(pages.length>1) alert('已导出 '+pages.length+' 张 '+(LIST_SIZE==='s34'?'3:4':'A4')+' 图片（每张 '+sizePx()+'）');
-  } catch(e){ alert('导出失败：'+e.message); }
+  } catch(e){ reportExportError('PNG',stage,e); }
   finally{ box.hidden=prev; }
 }
 
@@ -1670,25 +1688,30 @@ async function exportPdf(btn){
   const prev=box.hidden; box.hidden=false;
   const oldTxt=btn?btn.textContent:'';
   if(btn){ btn.disabled=true; btn.textContent='导出中…'; }
+  let stage='准备渲染';
   try{
     await new Promise(r=>setTimeout(r,80));
     const root=box.firstElementChild;
     const pages=(root&&root.classList.contains('lpages'))?Array.prototype.slice.call(root.querySelectorAll('.lcard')):[root];
     const jsPDF=window.jspdf.jsPDF;
     const is34=(LIST_SIZE==='s34');
-    const pw=is34?180:210, ph=is34?240:297;          // 3:4 → 180×240mm；A4 → 210×297mm
+    const pw=is34?180:210, ph=is34?240:297;
     let doc=null;
     for(let i=0;i<pages.length;i++){
       if(btn) btn.textContent='导出中 '+(i+1)+'/'+pages.length;
+      stage='渲染第 '+(i+1)+' / '+pages.length+' 页';
       const c=await html2canvas(pages[i],{scale:2,useCORS:true,allowTaint:false,imageTimeout:30000,backgroundColor:'#fff'});
+      stage='编码第 '+(i+1)+' 页 JPEG';
       const img=c.toDataURL('image/jpeg',0.92);
       if(!doc) doc=new jsPDF({orientation:'portrait',unit:'mm',format:[pw,ph],compress:true});
       else doc.addPage([pw,ph]);
+      stage='写入 PDF 第 '+(i+1)+' / '+pages.length+' 页';
       doc.addImage(img,'JPEG',0,0,pw,ph,undefined,'FAST');
     }
+    stage='保存 PDF 文件';
     doc.save(exportName()+'_'+sizeTag()+'_共'+pages.length+'页.pdf');
     alert('已导出 PDF：'+pages.length+' 页（'+(is34?'3:4 180×240mm':'A4 210×297mm')+'）');
-  } catch(e){ alert('导出 PDF 失败：'+e.message); }
+  } catch(e){ reportExportError('PDF',stage,e); }
   finally{ box.hidden=prev; if(btn){ btn.disabled=false; btn.textContent=oldTxt||'导出 PDF'; } }
 }
 loadData();
